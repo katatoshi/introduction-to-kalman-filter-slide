@@ -1,0 +1,21 @@
+[project]
+name = "monitor-data"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "katatoshi",email = "15307563+katatoshi@users.noreply.github.com"}
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "matplotlib (>=3.10.1,<4.0.0)",
+    "pyserial (>=3.5,<4.0)"
+]
+
+[tool.poetry]
+packages = [{include = "monitor_data", from = "src"}]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
