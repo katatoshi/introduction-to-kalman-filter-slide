@@ -4,39 +4,87 @@ import matplotlib.pyplot as plt
 rng = np.random.default_rng(736848565429029)
 # rng = np.random.default_rng() # シードを固定しない場合はこちらを使用
 
-class Robot:
-    def __init__(self, Q: float, R: float, mean_x_0: float, Sigma: float):
+class SimpleRobot:
+    """直線上を移動する簡単なロボット
+
+    observe → move → observe → move → ... のように observe と move を交互に呼んで，ロボットを動かす．
+
+    Attributes
+    ----------
+    x: float
+        ロボットの位置
+    y: float
+        目印からの距離の観測値
+    Q: float
+        ロボットが移動するときの指令からの位置のズレの分散
+    R: float
+        観測誤差の分散
+    """
+
+    def __init__(self, x_0: float, S: float, Q: float, R: float):
+        """
+        Parameters
+        ----------
+        x_0: float
+            初期位置の指定値
+        S: float
+            初期位置の指定値からのズレの分散
+        Q: float
+            ロボットが移動するときの指令からの位置のズレの分散
+        R: float
+            観測誤差の分散
+        """
+        self.x = x_0 + rng.normal(0.0, S)
+        self.y = 0.0 # まだ何も観測していないということ (0.0 という値に意味はない)
         self.Q = Q
         self.R = R
-        self.x = rng.normal(mean_x_0, Sigma)
-        self.y = 0.0
-
-    def move(self, u: float) -> None:
-        self.x = self.x + u + rng.normal(0, self.Q)
 
     def observe(self) -> None:
-        self.y = self.x + rng.normal(0, self.R)
+        """目印からの距離を観測する
 
-robot = Robot(0.5, 2.0, 0.0, 0.5)
+        目印からの距離の観測値が更新される．
+        """
+        v = rng.normal(0.0, self.R)
+        self.y = self.x + v
 
-goal = 30.0
+    def move(self, u: float) -> None:
+        """移動量を指令として受け取って移動する
+
+        ロボットの位置が更新される．
+
+        Parameters
+        ----------
+        u: float
+            移動量の指令
+        """
+        w = rng.normal(0.0, self.Q)
+        self.x = self.x + u + w
+
+# x_0=0.0, S=0.5 で，初期位置は 0.0 周辺であることを表す
+# Q=0.5, R=2.0 で，移動時のズレに比べて，観測値の誤差が大きいことを表す
+simple_robot = SimpleRobot(x_0=0.0, S=0.5, Q=0.5, R=2.0)
+
+goal = 30.0 # ループを抜けるためにゴールを設定
+
 len_max = 35
 x_list = []
 y_list = []
-
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
 y_min = -5.0
 y_max = goal + 5.0
 
 while True:
-    x = robot.x
+    # ここが移動後のタイミング (初回は初期位置に設置されたタイミング)
+
+    x = simple_robot.x # ロボットの位置
+
     x_list.append(x)
     if len(x_list) > len_max:
         x_list.pop(0)
 
-    robot.observe()
+    simple_robot.observe() # 目印からの距離を観測させる
+    y = simple_robot.y # 目印からの距離の観測値
 
-    y = robot.y
     y_list.append(y)
     if len(y_list) > len_max:
         y_list.pop(0)
@@ -56,16 +104,15 @@ while True:
     ax2.plot(range(len(x_list)), x_list, marker='o', ls='-', color='blue')
     ax2.plot(range(len(y_list)), y_list, marker='x', ls='--', color='red')
 
-    if y >= goal:
+    if y >= goal: # 実際には，ロボットには真の位置が分からないので，観測値でゴールに到達したか判断
         print(f'goal! x: {x}, y: {y}')
         plt.show()
-        break
+        break # ゴールを超えているなら終わり
 
     plt.pause(0.5)
 
-    u = 1.0
-
-    robot.move(u)
+    u = 1.0 # 毎ループ 1.0 移動せよという指令
+    simple_robot.move(1.0) # 移動量を指令として渡して移動させる
 
 fig, ax = plt.subplots(figsize=(8, 6))
 ax.set_xlim(0, len_max)

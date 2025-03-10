@@ -1,76 +1,171 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Tuple
 
 rng = np.random.default_rng(736848565429029)
 # rng = np.random.default_rng() # シードを固定しない場合はこちらを使用
 
-class Robot:
-    def __init__(self, Q: float, R: float, mean_x_0: float, Sigma: float):
+class SimpleRobot:
+    """直線上を移動する簡単なロボット
+
+    observe → move → observe → move → ... のように observe と move を交互に呼んで，ロボットを動かす．
+
+    Attributes
+    ----------
+    x: float
+        ロボットの位置
+    y: float
+        目印からの距離の観測値
+    Q: float
+        ロボットが移動するときの指令からの位置のズレの分散
+    R: float
+        観測誤差の分散
+    """
+
+    def __init__(self, x_0: float, S: float, Q: float, R: float):
+        """
+        Parameters
+        ----------
+        x_0: float
+            初期位置の指定値
+        S: float
+            初期位置の指定値からのズレの分散
+        Q: float
+            ロボットが移動するときの指令からの位置のズレの分散
+        R: float
+            観測誤差の分散
+        """
+        self.x = x_0 + rng.normal(0.0, S)
+        self.y = 0.0 # まだ何も観測していないということ (0.0 という値に意味はない)
         self.Q = Q
         self.R = R
-        self.x = rng.normal(mean_x_0, Sigma)
-        self.y = 0.0
-
-    def move(self, u: float) -> None:
-        self.x = self.x + u + rng.normal(0, self.Q)
 
     def observe(self) -> None:
-        self.y = self.x + rng.normal(0, self.R)
+        """目印からの距離を観測する
 
-robot = Robot(0.5, 2.0, 0.0, 0.5)
+        目印からの距離の観測値が更新される．
+        """
+        v = rng.normal(0.0, self.R)
+        self.y = self.x + v
+
+    def move(self, u: float) -> None:
+        """移動量を指令として受け取って移動する
+
+        ロボットの位置が更新される．
+
+        Parameters
+        ----------
+        u: float
+            移動量の指令
+        """
+        w = rng.normal(0.0, self.Q)
+        self.x = self.x + u + w
+
+# x_0=0.0, S=0.5 で，初期位置は 0.0 周辺であることを表す
+# Q=0.5, R=2.0 で，移動時のズレに比べて，観測値の誤差が大きいことを表す
+simple_robot = SimpleRobot(x_0=0.0, S=0.5, Q=0.5, R=2.0)
 
 class KalmanFilter:
-    def __init__(self, F: float, G: float, H: float, Q: float, R: float):
-        self.F = F
-        self.G = G
-        self.H = H
+    """カルマンフィルタ
+
+    filter → predict → filter → predict → ... のように filter と predict を交互に呼んで，状態 (ロボットの場合は位置) の推定値を更新していく．
+
+    Attributes
+    ----------
+    x_p: float
+        状態の予測推定値．今期までの観測値を使って来期の状態を推定しているので，予測 (prediction) という
+    P_p: float
+        状態の予測推定誤差の分散．来期の状態が，その予測推定値 x_p から，どれくらい外れ得るか (誤差) を表す
+    x_f: float
+        状態のフィルタリング推定値．今期までの観測値を使って今期の状態を推定 (雑音をフィルタリング) しているので，フィルタリング (filtering) という
+    P_f: float
+        状態のフィルタリング推定誤差の分散．今期の状態が，そのフィルタリング推定値 x_f から，どれくらい外れ得るか (誤差) を表す
+    Q: float
+        状態が推移するときの指令からの状態のズレの分散
+    R: float
+        観測誤差の分散
+    """
+
+    def __init__(self, x_0: float, S: float, Q: float, R: float):
+        """
+        Parameters
+        ----------
+        x_0: float
+            初期状態の指定値
+        S: float
+            初期状態の指定値からのズレの分散
+        Q: float
+            状態が推移するときの指令からの状態のズレの分散
+        R: float
+            観測誤差の分散
+        """
+        self.x_p = x_0
+        self.P_p = S
+        self.x_f = 0.0 # まだ何もフィルタリングしていないということ (0.0 という値に意味はない)
+        self.P_p = 0.0 # まだ何もフィルタリングしていないということ (0.0 という値に意味はない)
         self.Q = Q
         self.R = R
     
-    def filter(self, x_p: float, P_p: float, y: float) -> Tuple[float, float]:
-        K = P_p * self.H / (P_p * (self.H ** 2) + self.R) # カルマンゲイン
-        x_f = x_p + K * (y - self.H * x_p)
-        P_f = P_p - K * self.H * P_p
-        return (x_f, P_f)
+    def filter(self, y: float) -> None:
+        """観測値を使って予測推定値をフィルタリングする
+
+        フィルタリング推定値とフィルタリング推定誤差が更新される．
+
+        Parameters
+        ----------
+        y: float
+            観測値
+        """
+        K = self.P_p / (self.P_p + self.R) # カルマンゲイン
+        self.x_f = self.x_p + K * (y - self.x_p)
+        self.P_f = self.P_p - K * self.P_p
     
-    def predict(self, x_f: float, P_f: float, u: float) -> Tuple[float, float]:
-        x_p = self.F * x_f + u
-        P_p = (self.F ** 2) * P_f + (self.G ** 2) * self.Q
-        return (x_p, P_p)
+    def predict(self, u: float) -> None:
+        """推移量を指令として受け取ってフィルタリング推定値から来期の状態を予測する
 
-kalman_filter = KalmanFilter(1.0, 1.0, 1.0, 0.5, 2.0)
+        予測推定値と予測推定誤差が更新される．
 
-goal = 30.0
+        Parameters
+        ----------
+        u: float
+            推移量の指令
+        """
+        self.x_p = self.x_f + u
+        self.P_p = self.P_f + self.Q
+
+# simple_robot と同じパラメータを渡して，simple_robot に対応するカルマンフィルタを作る
+kalman_filter = KalmanFilter(x_0=0.0, S=0.5, Q=0.5, R=2.0)
+
+goal = 30.0 # ループを抜けるためにゴールを設定
+
 len_max = 35
 x_list = []
 y_list = []
+x_f_list = []
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
 y_min = -5.0
 y_max = goal + 5.0
 
-# 初期値
-(x_p, P_p) = (0.0, 0.5)
-
-# フィルタリング推定値のリスト
-x_f_list = []
-
 while True:
-    x = robot.x
+    # ここが移動後のタイミング (初回は初期位置に設置されたタイミング)
+
+    x = simple_robot.x # ロボットの位置
+
     x_list.append(x)
     if len(x_list) > len_max:
         x_list.pop(0)
 
-    robot.observe()
+    # x_p = kalman_filter.x_p # ロボットの位置の予測推定値 (ここでは使わない)
 
-    y = robot.y
+    simple_robot.observe() # 目印からの距離を観測させる
+    y = simple_robot.y # 目印からの距離の観測値
+
     y_list.append(y)
     if len(y_list) > len_max:
         y_list.pop(0)
 
-    # 観測更新
-    (x_f, P_f) = kalman_filter.filter(x_p, P_p, y)
+    kalman_filter.filter(y) # 観測値を使ってフィルタリング (観測更新)
+    x_f = kalman_filter.x_f # ロボットの位置のフィルタリング推定値
 
     x_f_list.append(x_f)
     if len(x_f_list) > len_max:
@@ -93,19 +188,16 @@ while True:
     ax2.plot(range(len(y_list)), y_list, marker='x', ls='--', color='red')
     ax2.plot(range(len(x_f_list)), x_f_list, marker='d', ls='-.', color='green')
 
-    if y >= goal:
+    if y >= goal: # 実際には，ロボットには真の位置が分からないので，観測値でゴールに到達したか判断
         print(f'goal! x: {x}, y: {y}')
         plt.show()
-        break
+        break # ゴールを超えているなら終わり
 
     plt.pause(0.5)
 
-    u = 1.0
-
-    robot.move(u)
-
-    # 時間更新
-    (x_p, P_p) = kalman_filter.predict(x_f, P_f, u)
+    u = 1.0 # 毎ループ 1.0 移動せよという指令
+    simple_robot.move(u) # 移動量を指令として渡して移動させる
+    kalman_filter.predict(u) # 移動量を指令として渡して予測 (時間更新)
 
 fig, ax = plt.subplots(figsize=(8, 6))
 ax.set_xlim(0, len_max)
