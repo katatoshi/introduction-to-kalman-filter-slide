@@ -14,9 +14,9 @@ class SimpleRobot:
     x: float
         ロボットの位置
     y: float
-        目印からの距離の観測値
+        距離の観測値
     Q: float
-        ロボットが移動するときの指令からの位置のズレの分散
+        ロボットが移動するときの指令からのズレの分散
     R: float
         観測誤差の分散
     """
@@ -30,7 +30,7 @@ class SimpleRobot:
         S: float
             初期位置の指定値からのズレの分散
         Q: float
-            ロボットが移動するときの指令からの位置のズレの分散
+            ロボットが移動するときの指令からのズレの分散
         R: float
             観測誤差の分散
         """
@@ -40,22 +40,22 @@ class SimpleRobot:
         self.R = R
 
     def observe(self) -> None:
-        """目印からの距離を観測する
+        """距離を観測する
 
-        目印からの距離の観測値が更新される．
+        距離の観測値が更新される．
         """
         v = rng.normal(0.0, self.R)
         self.y = self.x + v
 
     def move(self, u: float) -> None:
-        """移動量を指令として受け取って移動する
+        """指令 (移動量) を受け取って移動する
 
         ロボットの位置が更新される．
 
         Parameters
         ----------
         u: float
-            移動量の指令
+            指令 (移動量)
         """
         w = rng.normal(0.0, self.Q)
         self.x = self.x + u + w
@@ -67,20 +67,20 @@ simple_robot = SimpleRobot(x_0=0.0, S=0.5, Q=0.5, R=2.0)
 class KalmanFilter:
     """カルマンフィルタ
 
-    filter → predict → filter → predict → ... のように filter と predict を交互に呼んで，状態 (ロボットの場合は位置) の推定値を更新していく．
+    filter → predict → filter → predict → ... のように filter と predict を交互に呼んで，真の値 (ロボットの場合は位置) の推定値を更新していく．
 
     Attributes
     ----------
     x_p: float
-        状態の予測推定値．今期までの観測値を使って来期の状態を推定しているので，予測 (prediction) という
+        真の値の予測推定値．現在までの観測値を使って，次の真の値を推定しているので，予測 (prediction) という
     P_p: float
-        状態の予測推定誤差の分散．来期の状態が，その予測推定値 x_p から，どれくらい外れ得るか (誤差) を表す
+        真の値の予測推定誤差の分散．次の真の値が，その予測推定値 x_p から，どれくらい外れ得るか (誤差) を表す
     x_f: float
-        状態のフィルタリング推定値．今期までの観測値を使って今期の状態を推定 (雑音をフィルタリング) しているので，フィルタリング (filtering) という
+        真の値のフィルタリング推定値．現在までの観測値を使って，現在の真の値を推定しており，これをフィルタリング (filtering) という
     P_f: float
-        状態のフィルタリング推定誤差の分散．今期の状態が，そのフィルタリング推定値 x_f から，どれくらい外れ得るか (誤差) を表す
+        真の値のフィルタリング推定誤差の分散．現在の真の値が，そのフィルタリング推定値 x_f から，どれくらい外れ得るか (誤差) を表す
     Q: float
-        状態が推移するときの指令からの状態のズレの分散
+        真の値が推移するときの指令からのズレの分散
     R: float
         観測誤差の分散
     """
@@ -90,11 +90,11 @@ class KalmanFilter:
         Parameters
         ----------
         x_0: float
-            初期状態の指定値
+            初期の真の値の指定値
         S: float
-            初期状態の指定値からのズレの分散
+            初期の真の値の指定値からのズレの分散
         Q: float
-            状態が推移するときの指令からの状態のズレの分散
+            真の値が推移するときの指令からのズレの分散
         R: float
             観測誤差の分散
         """
@@ -106,7 +106,7 @@ class KalmanFilter:
         self.R = R
     
     def filter(self, y: float) -> None:
-        """観測値を使って予測推定値をフィルタリングする
+        """観測値を使ってフィルタリング推定値を更新する
 
         フィルタリング推定値とフィルタリング推定誤差が更新される．
 
@@ -120,14 +120,14 @@ class KalmanFilter:
         self.P_f = self.P_p - K * self.P_p
     
     def predict(self, u: float) -> None:
-        """推移量を指令として受け取ってフィルタリング推定値から来期の状態を予測する
+        """指令 (推移量) を受け取って予測推定値を更新する
 
         予測推定値と予測推定誤差が更新される．
 
         Parameters
         ----------
         u: float
-            推移量の指令
+            指令 (推移量)
         """
         self.x_p = self.x_f + u
         self.P_p = self.P_f + self.Q
@@ -157,14 +157,14 @@ while True:
 
     # x_p = kalman_filter.x_p # ロボットの位置の予測推定値 (ここでは使わない)
 
-    simple_robot.observe() # 目印からの距離を観測させる
-    y = simple_robot.y # 目印からの距離の観測値
+    simple_robot.observe() # 距離を観測させる
+    y = simple_robot.y # 距離の観測値
 
     y_list.append(y)
     if len(y_list) > len_max:
         y_list.pop(0)
 
-    kalman_filter.filter(y) # 観測値を使ってフィルタリング (観測更新)
+    kalman_filter.filter(y) # 観測値を使ってフィルタリング推定値を更新
     x_f = kalman_filter.x_f # ロボットの位置のフィルタリング推定値
 
     x_f_list.append(x_f)
@@ -195,9 +195,9 @@ while True:
 
     plt.pause(0.5)
 
-    u = 1.0 # 毎ループ 1.0 移動せよという指令
-    simple_robot.move(u) # 移動量を指令として渡して移動させる
-    kalman_filter.predict(u) # 移動量を指令として渡して予測 (時間更新)
+    u = 1.0 # 1.0 移動せよという指令
+    simple_robot.move(u) # 指令を渡して移動させる
+    kalman_filter.predict(u) # 指令を渡して予測推定値を更新
 
 fig, ax = plt.subplots(figsize=(8, 6))
 ax.set_xlim(0, len_max)

@@ -14,9 +14,9 @@ class SimpleRobot:
     x: float
         ロボットの位置
     y: float
-        目印からの距離の観測値
+        距離の観測値
     Q: float
-        ロボットが移動するときの指令からの位置のズレの分散
+        ロボットが移動するときの指令からのズレの分散
     R: float
         観測誤差の分散
     """
@@ -30,7 +30,7 @@ class SimpleRobot:
         S: float
             初期位置の指定値からのズレの分散
         Q: float
-            ロボットが移動するときの指令からの位置のズレの分散
+            ロボットが移動するときの指令からのズレの分散
         R: float
             観測誤差の分散
         """
@@ -40,22 +40,22 @@ class SimpleRobot:
         self.R = R
 
     def observe(self) -> None:
-        """目印からの距離を観測する
+        """距離を観測する
 
-        目印からの距離の観測値が更新される．
+        距離の観測値が更新される．
         """
         v = rng.normal(0.0, self.R)
         self.y = self.x + v
 
     def move(self, u: float) -> None:
-        """移動量を指令として受け取って移動する
+        """指令 (移動量) を受け取って移動する
 
         ロボットの位置が更新される．
 
         Parameters
         ----------
         u: float
-            移動量の指令
+            指令 (移動量)
         """
         w = rng.normal(0.0, self.Q)
         self.x = self.x + u + w
@@ -82,8 +82,8 @@ while True:
     if len(x_list) > len_max:
         x_list.pop(0)
 
-    simple_robot.observe() # 目印からの距離を観測させる
-    y = simple_robot.y # 目印からの距離の観測値
+    simple_robot.observe() # 距離を観測させる
+    y = simple_robot.y # 距離の観測値
 
     y_list.append(y)
     if len(y_list) > len_max:
@@ -111,8 +111,8 @@ while True:
 
     plt.pause(0.5)
 
-    u = 1.0 # 毎ループ 1.0 移動せよという指令
-    simple_robot.move(1.0) # 移動量を指令として渡して移動させる
+    u = 1.0 # 1.0 移動せよという指令
+    simple_robot.move(1.0) # 指令を渡して移動させる
 
 fig, ax = plt.subplots(figsize=(8, 6))
 ax.set_xlim(0, len_max)
