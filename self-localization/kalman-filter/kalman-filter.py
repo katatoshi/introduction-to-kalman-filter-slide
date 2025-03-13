@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 rng = np.random.default_rng(736848565429029)
 # rng = np.random.default_rng() # シードを固定しない場合はこちらを使用
 
-class SimpleRobot:
+class Robot:
     """直線上を移動する簡単なロボット
 
     observe → move → observe → move → ... のように observe と move を交互に呼んで，ロボットを動かす．
@@ -26,9 +26,9 @@ class SimpleRobot:
         Parameters
         ----------
         x_0: float
-            初期位置の指定値
+            初期位置の指定位置
         S: float
-            初期位置の指定値からのズレの分散
+            初期位置の指定位置からのズレの分散
         Q: float
             ロボットが移動するときの指令からのズレの分散
         R: float
@@ -60,27 +60,27 @@ class SimpleRobot:
         w = rng.normal(0.0, self.Q)
         self.x = self.x + u + w
 
-# x_0=0.0, S=0.5 で，初期位置は 0.0 周辺であることを表す
-# Q=0.5, R=2.0 で，移動時のズレに比べて，観測値の誤差が大きいことを表す
-simple_robot = SimpleRobot(x_0=0.0, S=0.5, Q=0.5, R=2.0)
+# x_0=0.0, S=0.5 なので，初期位置は 0.0 周辺
+# Q=0.5, R=2.0 なので，指令からのズレより観測誤差の方が大きい
+robot = Robot(x_0=0.0, S=0.5, Q=0.5, R=2.0)
 
 class KalmanFilter:
     """カルマンフィルタ
 
-    filter → predict → filter → predict → ... のように filter と predict を交互に呼んで，真の値 (ロボットの場合は位置) の推定値を更新していく．
+    filter → predict → filter → predict → ... のように filter と predict を交互に呼んで，ロボットの位置 (ロボットの場合は位置) の推定値を更新していく．
 
     Attributes
     ----------
     x_p: float
-        真の値の予測推定値．現在までの観測値を使って，次の真の値を推定しているので，予測 (prediction) という
+        ロボットの位置の事前推定値．次の観測値を得る前に，次の位置を推定しているので「事前」という
     P_p: float
-        真の値の予測推定誤差の分散．次の真の値が，その予測推定値 x_p から，どれくらい外れ得るか (誤差) を表す
+        ロボットの位置の事前推定誤差の分散．次の位置が，その事前推定値 x_p から，どれくらい外れ得るか (誤差) を表す
     x_f: float
-        真の値のフィルタリング推定値．現在までの観測値を使って，現在の真の値を推定しており，これをフィルタリング (filtering) という
+        ロボットの位置の事後推定値．現在の観測値を得た後に，現在の位置を推定しているので「事後」という
     P_f: float
-        真の値のフィルタリング推定誤差の分散．現在の真の値が，そのフィルタリング推定値 x_f から，どれくらい外れ得るか (誤差) を表す
+        ロボットの位置の事後推定誤差の分散．現在の位置が，その事後推定値 x_f から，どれくらい外れ得るか (誤差) を表す
     Q: float
-        真の値が推移するときの指令からのズレの分散
+        ロボットの位置が推移するときの指令からのズレの分散
     R: float
         観測誤差の分散
     """
@@ -90,11 +90,11 @@ class KalmanFilter:
         Parameters
         ----------
         x_0: float
-            初期の真の値の指定値
+            初期位置の指定位置
         S: float
-            初期の真の値の指定値からのズレの分散
+            初期位置の指定位置からのズレの分散
         Q: float
-            真の値が推移するときの指令からのズレの分散
+            ロボットが移動するときの指令からのズレの分散
         R: float
             観測誤差の分散
         """
@@ -106,9 +106,9 @@ class KalmanFilter:
         self.R = R
     
     def filter(self, y: float) -> None:
-        """観測値を使ってフィルタリング推定値を更新する
+        """観測値を受け取って事後推定値を更新する
 
-        フィルタリング推定値とフィルタリング推定誤差が更新される．
+        事後推定値 x_f と事後推定誤差 P_f が更新される．
 
         Parameters
         ----------
@@ -120,9 +120,9 @@ class KalmanFilter:
         self.P_f = self.P_p - K * self.P_p
     
     def predict(self, u: float) -> None:
-        """指令 (推移量) を受け取って予測推定値を更新する
+        """指令 (推移量) を受け取って事前推定値を更新する
 
-        予測推定値と予測推定誤差が更新される．
+        事前推定値 x_p と事前推定誤差 P_p が更新される．
 
         Parameters
         ----------
@@ -132,7 +132,7 @@ class KalmanFilter:
         self.x_p = self.x_f + u
         self.P_p = self.P_f + self.Q
 
-# simple_robot と同じパラメータを渡して，simple_robot に対応するカルマンフィルタを作る
+# robot と同じパラメータの値で kalman_filter を作る
 kalman_filter = KalmanFilter(x_0=0.0, S=0.5, Q=0.5, R=2.0)
 
 goal = 30.0 # ループを抜けるためにゴールを設定
@@ -147,25 +147,23 @@ y_min = -5.0
 y_max = goal + 5.0
 
 while True:
-    # ここが移動後のタイミング (初回は初期位置に設置されたタイミング)
-
-    x = simple_robot.x # ロボットの位置
+    x = robot.x # ロボットの位置
 
     x_list.append(x)
     if len(x_list) > len_max:
         x_list.pop(0)
 
-    # x_p = kalman_filter.x_p # ロボットの位置の予測推定値 (ここでは使わない)
+    # x_p = kalman_filter.x_p # ロボットの位置の事前推定値
 
-    simple_robot.observe() # 距離を観測させる
-    y = simple_robot.y # 距離の観測値
+    robot.observe() # 目印からの距離を観測させる
+    y = robot.y # 目印からの距離の観測値
 
     y_list.append(y)
     if len(y_list) > len_max:
         y_list.pop(0)
 
-    kalman_filter.filter(y) # 観測値を使ってフィルタリング推定値を更新
-    x_f = kalman_filter.x_f # ロボットの位置のフィルタリング推定値
+    kalman_filter.filter(y) # 観測値が得られたので事後推定値を更新
+    x_f = kalman_filter.x_f # ロボットの位置の事後推定値
 
     x_f_list.append(x_f)
     if len(x_f_list) > len_max:
@@ -188,16 +186,16 @@ while True:
     ax2.plot(range(len(y_list)), y_list, marker='x', ls='--', color='red')
     ax2.plot(range(len(x_f_list)), x_f_list, marker='d', ls='-.', color='green')
 
-    if y >= goal: # 実際には，ロボットには真の位置が分からないので，観測値でゴールに到達したか判断
+    if y >= goal: # 観測値でゴールに到達したか判断する
         print(f'goal! x: {x}, y: {y}')
         plt.show()
-        break # ゴールを超えているなら終わり
+        break # ゴールを超えていたら終わり
 
     plt.pause(0.5)
 
-    u = 1.0 # 1.0 移動せよという指令
-    simple_robot.move(u) # 指令を渡して移動させる
-    kalman_filter.predict(u) # 指令を渡して予測推定値を更新
+    u = 1.0 # 1.0 移動するという指令
+    robot.move(u) # 指令を渡してロボットを移動させる
+    kalman_filter.predict(u) # 指令を渡して事前推定値を更新
 
 fig, ax = plt.subplots(figsize=(8, 6))
 ax.set_xlim(0, len_max)

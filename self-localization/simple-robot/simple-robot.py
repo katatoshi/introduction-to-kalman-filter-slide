@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 rng = np.random.default_rng(736848565429029)
 # rng = np.random.default_rng() # シードを固定しない場合はこちらを使用
 
-class SimpleRobot:
+class Robot:
     """直線上を移動する簡単なロボット
 
     observe → move → observe → move → ... のように observe と move を交互に呼んで，ロボットを動かす．
@@ -26,9 +26,9 @@ class SimpleRobot:
         Parameters
         ----------
         x_0: float
-            初期位置の指定値
+            初期位置の指定位置
         S: float
-            初期位置の指定値からのズレの分散
+            初期位置の指定位置からのズレの分散
         Q: float
             ロボットが移動するときの指令からのズレの分散
         R: float
@@ -60,9 +60,9 @@ class SimpleRobot:
         w = rng.normal(0.0, self.Q)
         self.x = self.x + u + w
 
-# x_0=0.0, S=0.5 で，初期位置は 0.0 周辺であることを表す
-# Q=0.5, R=2.0 で，移動時のズレに比べて，観測値の誤差が大きいことを表す
-simple_robot = SimpleRobot(x_0=0.0, S=0.5, Q=0.5, R=2.0)
+# x_0=0.0, S=0.5 なので，初期位置は 0.0 周辺
+# Q=0.5, R=2.0 なので，指令からのズレより観測誤差の方が大きい
+robot = Robot(x_0=0.0, S=0.5, Q=0.5, R=2.0)
 
 goal = 30.0 # ループを抜けるためにゴールを設定
 
@@ -74,16 +74,14 @@ y_min = -5.0
 y_max = goal + 5.0
 
 while True:
-    # ここが移動後のタイミング (初回は初期位置に設置されたタイミング)
-
-    x = simple_robot.x # ロボットの位置
+    x = robot.x # ロボットの位置
 
     x_list.append(x)
     if len(x_list) > len_max:
         x_list.pop(0)
 
-    simple_robot.observe() # 距離を観測させる
-    y = simple_robot.y # 距離の観測値
+    robot.observe() # 目印からの距離を観測させる
+    y = robot.y # 目印からの距離の観測値
 
     y_list.append(y)
     if len(y_list) > len_max:
@@ -104,15 +102,15 @@ while True:
     ax2.plot(range(len(x_list)), x_list, marker='o', ls='-', color='blue')
     ax2.plot(range(len(y_list)), y_list, marker='x', ls='--', color='red')
 
-    if y >= goal: # 実際には，ロボットには真の位置が分からないので，観測値でゴールに到達したか判断
+    if y >= goal: # 観測値でゴールに到達したか判断する
         print(f'goal! x: {x}, y: {y}')
         plt.show()
-        break # ゴールを超えているなら終わり
+        break # ゴールを超えていたら終わり
 
     plt.pause(0.5)
 
-    u = 1.0 # 1.0 移動せよという指令
-    simple_robot.move(1.0) # 指令を渡して移動させる
+    u = 1.0 # 1.0 移動するという指令
+    robot.move(1.0) # 指令を渡してロボットを移動させる
 
 fig, ax = plt.subplots(figsize=(8, 6))
 ax.set_xlim(0, len_max)
