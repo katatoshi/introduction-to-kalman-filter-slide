@@ -110,7 +110,7 @@ while True:
     plt.pause(0.5)
 
     u = 1.0 # 1.0 移動するという指令
-    robot.move(1.0) # 指令を渡してロボットを移動させる
+    robot.move(u) # 指令を渡してロボットを移動させる
 
 fig, ax = plt.subplots(figsize=(8, 6))
 ax.set_xlim(0, len_max)
